@@ -1,0 +1,16 @@
+# Render blueprint — free tier. Set the two AI keys in the dashboard.
+services:
+  - type: web
+    name: masal-leads
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false          # set in the Render dashboard, never committed
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: LLM_ENGINE
+        value: auto
+      - key: MOCK_MODE
+        value: "true"        # voice demo mode; no Ringg credits needed

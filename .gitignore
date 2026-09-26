@@ -1,0 +1,22 @@
+# secrets — never commit
+.env
+.env.local
+
+# runtime data
+data/
+*.tmp
+
+# python
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# os / editor
+.DS_Store
+*:Zone.Identifier
+
+# the company's assignment brief — not mine to publish
+assignment.pdf
+*.pdf

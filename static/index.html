@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Masal Leads</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23a855f7'/%3E%3Cpath d='M8 22V10l8 7 8-7v12' stroke='white' stroke-width='2.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="glow glow-a"></div>
+<div class="glow glow-b"></div>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="mark" aria-hidden="true"></span>
+    <div>
+      <h1>Masal Leads</h1>
+      <p class="tagline">AI triage for inbound real-estate enquiries</p>
+    </div>
+  </div>
+  <div class="badges" id="badges"></div>
+</header>
+
+<section class="stats" id="stats" aria-label="Pipeline summary"></section>
+
+<main class="layout">
+  <!-- ─────────── intake ─────────── -->
+  <aside class="panel intake">
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-tab="single" role="tab" type="button">New lead</button>
+      <button class="tab" data-tab="bulk" role="tab" type="button">Bulk triage</button>
+    </div>
+
+    <form id="form-single" class="tabpane active" autocomplete="off">
+      <label class="field"><span>Name <b>*</b></span>
+        <input name="name" required maxlength="120" placeholder="Rahul Mehta"></label>
+      <label class="field"><span>Location</span>
+        <input name="location" maxlength="160" placeholder="Whitefield, Bangalore"></label>
+      <label class="field"><span>Property requirement</span>
+        <input name="property_requirement" maxlength="300" placeholder="3BHK apartment, east-facing"></label>
+      <div class="row">
+        <label class="field"><span>Budget</span>
+          <input name="budget" maxlength="120" placeholder="1.4 crore"></label>
+        <label class="field"><span>Buying timeline</span>
+          <input name="timeline" maxlength="120" placeholder="Within 2 months"></label>
+      </div>
+      <div class="row">
+        <label class="field"><span>Phone <i>optional</i></span>
+          <input name="phone" maxlength="20" placeholder="+919876543210"></label>
+        <label class="field"><span>Source</span>
+          <input name="source" maxlength="80" placeholder="Website"></label>
+      </div>
+      <label class="field"><span>Customer message</span>
+        <textarea name="message" rows="5" maxlength="6000"
+          placeholder="Paste their enquiry, WhatsApp message or chat transcript…"></textarea></label>
+
+      <div class="actions">
+        <button class="primary solid" id="btn-add" type="submit">Analyse lead</button>
+        <button class="ghost" id="btn-sample" type="button">Fill example</button>
+      </div>
+      <p class="hint" id="single-hint">The AI scores the lead the moment you save it.</p>
+    </form>
+
+    <div id="form-bulk" class="tabpane">
+      <p class="lede">Paste a WhatsApp export, forwarded emails or portal notifications.
+        The AI splits it into individual leads, structures each one and scores them.</p>
+      <label class="field"><span>Raw inbound</span>
+        <textarea id="bulk-text" rows="11" maxlength="20000" spellcheck="false"
+          placeholder="[11/09, 9:14 am] +91 98765 43210: Hi, looking for a 3BHK around 1.4cr…"></textarea></label>
+      <div class="actions">
+        <button class="primary solid" id="btn-triage" type="button">Triage &amp; score</button>
+        <button class="ghost" id="btn-bulk-sample" type="button">Load example</button>
+      </div>
+      <p class="hint" id="bulk-hint">Skips OTPs, delivery alerts and your own outgoing messages.</p>
+    </div>
+
+    <hr>
+    <div class="actions column">
+      <a class="ghost link-btn" id="btn-csv" href="/api/leads.csv" download>Export CSV</a>
+      <button class="ghost danger" id="btn-clear" type="button">Clear all leads</button>
+    </div>
+  </aside>
+
+  <!-- ─────────── ranked list ─────────── -->
+  <section class="panel list">
+    <div class="panel-head">
+      <h2>Priority queue <span class="count" id="lead-count">0</span></h2>
+      <div class="filters" id="filters">
+        <button class="chip active" data-filter="all" type="button">All</button>
+        <button class="chip" data-filter="hot" type="button">Hot</button>
+        <button class="chip" data-filter="warm" type="button">Warm</button>
+        <button class="chip" data-filter="cold" type="button">Cold</button>
+        <button class="chip" data-filter="today" type="button">Act today</button>
+      </div>
+    </div>
+    <div id="leads" class="leads"></div>
+    <div class="empty" id="empty">
+      <div class="empty-mark"></div>
+      <p>No leads yet</p>
+      <p class="hint">Add one on the left, or paste a batch into <strong>Bulk triage</strong>.</p>
+    </div>
+  </section>
+
+  <!-- ─────────── detail ─────────── -->
+  <section class="panel detail" id="detail" hidden>
+    <button class="close" id="detail-close" type="button" aria-label="Close">×</button>
+    <div id="detail-body"></div>
+  </section>
+</main>
+
+<div class="toast" id="toast" hidden></div>
+<script src="/static/app.js"></script>
+</body>
+</html>
