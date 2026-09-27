@@ -8,8 +8,8 @@ Built for the **Masal AI FDE assignment (Round 2)**.
 
 | | |
 |---|---|
-| **Live app** | _<add your Render URL here>_ |
-| **Demo video** (3 min) | _<add your Loom / Drive / YouTube link here>_ |
+| **Live app** | **https://masal-leads.onrender.com** |
+| **Demo video** (3 min) | https://drive.google.com/file/d/15a4u78YQO2tfVDrFwLBPAc96WYBNO0oj/view?usp=sharing |
 | **Repository** | https://github.com/iamshubhshrma/masalAssignment |
 | **AI usage disclosure** | [see below](#ai-usage-disclosure) |
 
