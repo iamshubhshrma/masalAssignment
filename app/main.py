@@ -42,7 +42,7 @@ from .transcript import resolve_turns
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("masal")
 
-UI_BUILD = "2026-09-26.6"
+UI_BUILD = "2026-09-27.1"
 
 store = LeadStore(settings.data_file)
 ringg: RinggClient | MockRinggClient = make_client(settings)
@@ -140,14 +140,14 @@ async def create_lead(intake: LeadIntake = Body(...)) -> dict[str, Any]:
 async def get_lead(lead_id: str) -> dict[str, Any]:
     lead = store.get(lead_id)
     if lead is None:
-        raise HTTPException(404, "unknown lead")
+        raise HTTPException(404, "This lead no longer exists (the server may have restarted).")
     return lead.model_dump(mode="json")
 
 
 @app.delete("/api/leads/{lead_id}")
 async def delete_lead(lead_id: str) -> dict[str, Any]:
     if not await store.delete(lead_id):
-        raise HTTPException(404, "unknown lead")
+        raise HTTPException(404, "This lead no longer exists (the server may have restarted).")
     return {"deleted": lead_id, "stats": store.stats()}
 
 
@@ -155,7 +155,7 @@ async def delete_lead(lead_id: str) -> dict[str, Any]:
 async def reanalyze_one(lead_id: str) -> dict[str, Any]:
     lead = store.get(lead_id)
     if lead is None:
-        raise HTTPException(404, "unknown lead")
+        raise HTTPException(404, "This lead no longer exists (the server may have restarted).")
     lead = await _analyse_into(lead)
     return {"lead": lead.model_dump(mode="json"), "stats": store.stats()}
 
@@ -205,7 +205,7 @@ async def triage(req: TriageRequest = Body(...)) -> dict[str, Any]:
 async def chat(lead_id: str, req: ChatRequest = Body(...)) -> dict[str, Any]:
     lead = store.get(lead_id)
     if lead is None:
-        raise HTTPException(404, "unknown lead")
+        raise HTTPException(404, "This lead no longer exists (the server may have restarted).")
 
     answer = await ask(lead, req.question, settings, _http)
     lead = await store.append_chat(
@@ -219,7 +219,7 @@ async def chat(lead_id: str, req: ChatRequest = Body(...)) -> dict[str, Any]:
 async def clear_chat(lead_id: str) -> dict[str, Any]:
     lead = store.get(lead_id)
     if lead is None:
-        raise HTTPException(404, "unknown lead")
+        raise HTTPException(404, "This lead no longer exists (the server may have restarted).")
     lead.chat = []
     await store.update(lead)
     return {"ok": True}
@@ -232,7 +232,7 @@ async def clear_chat(lead_id: str) -> dict[str, Any]:
 async def start_call(lead_id: str) -> dict[str, Any]:
     lead = store.get(lead_id)
     if lead is None:
-        raise HTTPException(404, "unknown lead")
+        raise HTTPException(404, "This lead no longer exists (the server may have restarted).")
     if not settings.voice_enabled:
         raise HTTPException(400, "Voice calling is not configured on this deployment.")
     if not lead.phone:
@@ -336,7 +336,7 @@ async def refresh_calls() -> dict[str, Any]:
 async def force_sync(lead_id: str) -> dict[str, Any]:
     lead = store.get(lead_id)
     if lead is None:
-        raise HTTPException(404, "unknown lead")
+        raise HTTPException(404, "This lead no longer exists (the server may have restarted).")
     lead.voice.outcome = None
     lead.voice.polls = 0
     await store.update(lead)

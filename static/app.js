@@ -40,9 +40,27 @@ async function api(path, opts = {}) {
   try { body = await res.json(); } catch { /* no body */ }
   if (!res.ok) {
     const d = body?.error || body?.detail || res.statusText;
-    throw new Error(typeof d === 'string' ? d : JSON.stringify(d));
+    const err = new Error(typeof d === 'string' ? d : JSON.stringify(d));
+    err.status = res.status;
+    throw err;
   }
   return body;
+}
+
+/* The server restarting drops the in-memory store, so an open tab can still be
+   showing leads that no longer exist. Rather than surfacing a bare "unknown
+   lead", resync from the server and say what happened. */
+async function handleError(e, fallbackMsg) {
+  if (e.status === 404) {
+    try {
+      await loadAll();
+      state.selected = null;
+      render();
+      toast('That lead no longer exists on the server — list refreshed.', 'err');
+      return;
+    } catch { /* fall through to the plain message */ }
+  }
+  toast(fallbackMsg ? `${fallbackMsg}: ${e.message}` : e.message, 'err');
 }
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) =>
@@ -344,7 +362,7 @@ on('detail-body', 'click', async (ev) => {
     try {
       const out = await api(`/api/leads/${re.dataset.reanalyze}/reanalyze`, { method: 'POST' });
       applyPayload(out); render(); toast('Re-analysed', 'ok');
-    } catch (e) { toast(e.message, 'err'); re.disabled = false; re.textContent = 'Re-analyse'; }
+    } catch (e) { re.disabled = false; re.textContent = 'Re-analyse'; await handleError(e); }
     return;
   }
 
@@ -356,7 +374,7 @@ on('detail-body', 'click', async (ev) => {
       state.leads = state.leads.filter((l) => l.id !== del.dataset.delete);
       state.stats = out.stats || state.stats; state.selected = null;
       render(); toast('Lead deleted', 'ok');
-    } catch (e) { toast(e.message, 'err'); }
+    } catch (e) { await handleError(e); }
     return;
   }
 
@@ -370,7 +388,10 @@ on('detail-body', 'click', async (ev) => {
       const out = await api(`/api/leads/${call.dataset.call}/call`, { method: 'POST' });
       applyPayload({ lead: out }); render(); toast('Call placed', 'ok');
       pollCalls();
-    } catch (e) { toast(e.message, 'err'); call.disabled = false; call.textContent = 'AI confirmation call'; }
+    } catch (e) {
+      call.disabled = false; call.textContent = 'AI confirmation call';
+      await handleError(e);
+    }
   }
 });
 
@@ -394,7 +415,7 @@ on('detail-body', 'submit', async (ev) => {
     lead.chat = out.chat;
   } catch (e) {
     lead.chat = lead.chat.slice(0, -1);
-    toast(e.message, 'err');
+    await handleError(e);
   } finally { state.busy = false; renderDetail(); }
 });
 

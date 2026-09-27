@@ -219,3 +219,22 @@ def test_csv_export_carries_the_analysis(client):
 
 def test_csv_is_valid_when_empty(client):
     assert list(csv.DictReader(io.StringIO(client.get("/api/leads.csv").text))) == []
+
+
+# ---- stale client state ----------------------------------------------------- #
+def test_actions_on_a_vanished_lead_return_404_not_500(client):
+    """An open tab can outlive the in-memory store; every lead action must 404."""
+    lead_id = client.post("/api/leads", json=LEAD_BODY).json()["lead"]["id"]
+    client.delete(f"/api/leads/{lead_id}")
+
+    assert client.get(f"/api/leads/{lead_id}").status_code == 404
+    assert client.post(f"/api/leads/{lead_id}/call").status_code == 404
+    assert client.post(f"/api/leads/{lead_id}/reanalyze").status_code == 404
+    assert client.post(f"/api/leads/{lead_id}/chat",
+                       json={"question": "hi"}).status_code == 404
+    assert client.post(f"/api/leads/{lead_id}/call/sync").status_code == 404
+
+
+def test_404_message_explains_itself(client):
+    r = client.post("/api/leads/nope/call")
+    assert "no longer exists" in r.json()["detail"]
