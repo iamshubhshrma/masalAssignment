@@ -4,10 +4,43 @@ AI triage for inbound real-estate enquiries. A salesperson pastes a messy batch 
 enquiries or types one in, and gets back a **ranked queue**: who to call first, what
 they want, what's blocking them, and a reply ready to send.
 
-**Live:** _<add your deployed URL here>_
-**Demo video:** _<add your 3-minute link here>_
+Built for the **Masal AI FDE assignment (Round 2)**.
+
+| | |
+|---|---|
+| **Live app** | _<add your Render URL here>_ |
+| **Demo video** (3 min) | _<add your Loom / Drive / YouTube link here>_ |
+| **Repository** | https://github.com/iamshubhshrma/masalAssignment |
+| **AI usage disclosure** | [see below](#ai-usage-disclosure) |
 
 ![Masal Leads](docs/screenshot.png)
+
+---
+
+## Requirements checklist
+
+Everything the brief asked for, and where to find it.
+
+**Core requirements**
+
+| # | Requirement | Where |
+|---|---|---|
+| 1 | Lead intake — Name, Location, Property requirement, Budget, Buying timeline, free-text Customer message | **New lead** tab · `app/models.py:LeadIntake` |
+| 2 | AI analysis — summary, intent, key requirements, objections, next action, suggested response | Detail panel · `app/analyze.py` |
+| 3 | Conversational interface grounded in one lead | **Ask about this lead** · `app/chat.py` |
+| 4 | Multiple saved leads, ranked by an AI-produced priority | **Priority queue** — 0–100 score + hot/warm/cold + urgency · `app/store.py:all()` |
+| 5 | Clear display, scannable in seconds | Score ring, temperature band, intent and objection count per row |
+| ★ | **My own feature** | **Bulk triage** (paste a raw WhatsApp dump → structured, scored leads) and an **AI voice confirmation call** — [details](#my-own-feature--two-of-them) |
+
+**Technical requirements**
+
+| Requirement | How it's met |
+|---|---|
+| At least one real AI API call, not canned | Every analysis, chat reply and triage is a live call to Groq or Gemini. There is no hardcoded path — with no API key the app returns a 503 and says so. |
+| Deployed at a live URL, testable with no setup | Render free tier, Docker. Voice runs in demo mode so nothing needs credentials. |
+| Public GitHub repository | Link above. |
+| Free-tier resources only | Groq free tier, Google AI Studio free tier, Render free web service. No paid service anywhere. |
+| AI coding assistants disclosed | [AI usage disclosure](#ai-usage-disclosure). |
 
 ---
 
@@ -25,6 +58,8 @@ tells you where to start. Everything else hangs off that.
 | **Conversational interface** | Per-lead chat grounded in that lead's fields, its analysis, and any call transcript. Ask "what should I emphasise on the call?" or "make my reply more assertive". It refuses to answer questions it has no grounds for. |
 | **Lead list & prioritisation** | Every lead gets a 0–100 priority score, a hot/warm/cold band, and an urgency flag. The queue sorts by score; filters for Hot / Warm / Cold / Act today. |
 | **Clear display** | Score ring, temperature, intent and objection count on every row. Full brief in one panel, no scrolling to find the next action. |
+
+<a id="my-own-feature--two-of-them"></a>
 
 ### My own feature — two of them
 
@@ -158,7 +193,7 @@ two gives you the fallback.
 ### Tests
 
 ```bash
-./.venv/bin/python -m pytest        # 69 tests, ~2s
+./.venv/bin/python -m pytest        # 71 tests, ~2s
 ```
 
 They stub the providers, so the suite is free, offline and deterministic — it
@@ -167,9 +202,40 @@ and the failure paths, without spending a token.
 
 ### Deploying
 
-`Dockerfile` runs anywhere that takes a container and reads `$PORT`
-(Render, Railway, Fly, Hugging Face Spaces). `render.yaml` is a one-click
-blueprint — set `GROQ_API_KEY` / `GOOGLE_API_KEY` in the dashboard.
+Deployed on **Render's free tier** from the committed `render.yaml` blueprint:
+
+1. Render → **New** → **Blueprint**, pick this repo, branch `main`
+2. Supply the two secrets it prompts for: `GROQ_API_KEY`, `GOOGLE_API_KEY`
+3. Apply — the Docker build takes ~5 minutes
+
+`healthCheckPath` is `/api/health`, so Render reports plainly whether it came up.
+
+The same `Dockerfile` runs on any host that takes a container and reads `$PORT`
+(Railway, Koyeb, Fly). It runs as UID 1000 and installs with `pip --user`, which
+also satisfies Hugging Face Spaces — though HF now requires billing for the
+Docker SDK, which is why this is on Render.
+
+**Free-tier caveat:** a free Render service sleeps after 15 minutes idle and
+takes ~50s to wake. A uptime pinger on `/api/health` every 10 minutes keeps it
+warm if you need it responsive.
+
+### API
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/health` | AI chain, build, stats |
+| `POST` | `/api/leads` | Create a lead and analyse it |
+| `GET` | `/api/leads` | Ranked list + stats |
+| `GET` `DELETE` | `/api/leads/{id}` | Fetch / remove one |
+| `POST` | `/api/leads/{id}/reanalyze` | Re-score one lead |
+| `POST` | `/api/reanalyze` | Fill in any failed analyses |
+| `POST` | `/api/triage` | Raw blob → many scored leads |
+| `POST` `DELETE` | `/api/leads/{id}/chat` | Grounded Q&A / clear history |
+| `POST` | `/api/leads/{id}/call` | Place the AI voice call |
+| `POST` | `/api/calls/refresh` | Poll in-flight calls |
+| `GET` | `/api/leads.csv` | Export |
+
+Interactive docs at `/docs`.
 
 ---
 
@@ -196,8 +262,10 @@ provider 429'd is the worst possible failure for this product.
 
 ## Known limitations
 
-- **Storage is ephemeral.** JSON file, no database. Leads survive a restart
-  locally; on free hosting they reset on redeploy.
+- **Storage is ephemeral.** JSON file, no database, and no concurrent-writer
+  safety beyond a single asyncio lock. Leads survive a restart locally; on free
+  hosting they reset on redeploy. `store.py` is the only module that knows how
+  leads are persisted, so this is one class to swap.
 - **No auth.** Anyone with the URL can read and write leads. Fine for a demo,
   not for real customer data.
 - **Free-tier rate limits are real.** Triaging a very large paste can exhaust
@@ -208,11 +276,19 @@ provider 429'd is the worst possible failure for this product.
   ceilings are in one dict precisely so they can be replaced by fitted values.
 - **English-centric.** The models handle Hinglish input, but the rubric anchors
   and the suggested replies are written in English.
-- **Voice calling needs Ringg credentials**, and a non-KYC Ringg account can only
-  dial verified numbers. Demo mode simulates it end to end.
+- **The voice call is simulated on the live URL.** It runs against canned Ringg
+  responses (`MOCK_MODE=true`) so anyone can click through the whole flow without
+  credentials or spending call credits. The same code path drives real calls when
+  Ringg is configured; the transcript handling, the outcome merge and the re-score
+  are identical either way. Real calls additionally need a KYC-verified Ringg
+  account, which can only dial verified numbers until KYC completes.
+- **Cold start on free hosting.** First request after 15 minutes idle takes ~50s
+  while Render wakes the container.
 - **No dedupe.** The same person enquiring twice becomes two leads.
 
 ---
+
+<a id="ai-usage-disclosure"></a>
 
 ## AI usage disclosure
 
