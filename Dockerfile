@@ -1,22 +1,31 @@
-# Runs on any free-tier container host: Render, Hugging Face Spaces, Fly, Railway.
+# Runs on any free-tier container host: Hugging Face Spaces, Render, Railway, Fly.
+#
+# HF Spaces runs the container as UID 1000, so everything is owned by that user
+# and nothing is written outside its home. Render/Railway run as root and are
+# unaffected by the extra user.
 FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1
 
-WORKDIR /app
+RUN useradd -m -u 1000 user
+USER user
+ENV HOME=/home/user \
+    PATH=/home/user/.local/bin:$PATH
+WORKDIR $HOME/app
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY --chown=user requirements.txt .
+RUN pip install --no-cache-dir --user -r requirements.txt
 
-COPY app ./app
-COPY static ./static
+COPY --chown=user app ./app
+COPY --chown=user static ./static
 
-# Leads persist to a JSON file; on ephemeral hosts this resets on redeploy.
-RUN mkdir -p /app/data
+# Leads persist to a JSON file here. On HF and other ephemeral hosts this resets
+# on restart; the store degrades to in-memory if the path is not writable.
+RUN mkdir -p $HOME/app/data
 
-# Hosts inject $PORT (Render, Railway); 7860 is the Hugging Face Spaces default.
+# HF Spaces expects 7860; Render/Railway inject $PORT.
 ENV PORT=7860
 EXPOSE 7860
 
